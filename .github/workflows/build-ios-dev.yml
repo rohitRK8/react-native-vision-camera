@@ -1,0 +1,52 @@
+name: Build iOS Dev (Manual)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build iOS Example App (Simulator)
+    runs-on: macos-15
+    defaults:
+      run:
+        working-directory: example/ios
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Install npm dependencies (bun)
+        run: cd ../../ && bun install
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+          working-directory: example/ios
+
+      - name: Install CocoaPods
+        run: gem install cocoapods
+
+      - name: Install Pods
+        run: pod install
+
+      - name: Build App (Simulator)
+        run: |
+          set -o pipefail && xcodebuild \
+            -derivedDataPath build \
+            -workspace VisionCameraExample.xcworkspace \
+            -scheme VisionCameraExample \
+            -sdk iphonesimulator \
+            -configuration Debug \
+            -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
+            build \
+            CODE_SIGNING_ALLOWED=NO 2>&1 | tee build.log | tail -50
+
+      - name: Upload build log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-build-log
+          path: example/ios/build.log
+          retention-days: 7
