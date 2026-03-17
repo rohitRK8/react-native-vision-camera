@@ -2,6 +2,11 @@ name: Build iOS Dev (Manual)
 
 on:
   workflow_dispatch:
+    inputs:
+      ref_note:
+        description: 'Optional note for this build'
+        required: false
+        type: string
 
 jobs:
   build:
