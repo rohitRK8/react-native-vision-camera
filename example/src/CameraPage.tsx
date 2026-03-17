@@ -56,6 +56,10 @@ export function CameraPage({ navigation }: Props): React.ReactElement {
   const [flash, setFlash] = useState<'off' | 'on'>('off')
   const [enableNightMode, setEnableNightMode] = useState(false)
 
+  // Manual exposure controls
+  const [manualIso, setManualIso] = useState<number | undefined>(undefined)
+  const [manualShutter, setManualShutter] = useState<number | undefined>(undefined)
+
   // camera device settings
   const [preferredDevice] = usePreferredCameraDevice()
   let device = useCameraDevice(cameraPosition)
@@ -192,6 +196,47 @@ export function CameraPage({ navigation }: Props): React.ReactElement {
   const videoHdr = format?.supportsVideoHdr && enableHdr
   const photoHdr = format?.supportsPhotoHdr && enableHdr && !videoHdr
 
+  // ISO presets based on device format range
+  const isoPresets = useMemo(() => {
+    const min = format?.minISO ?? 50
+    const max = format?.maxISO ?? 3200
+    return [undefined, min, 100, 200, 400, 800, 1600, 3200].filter((v) => v === undefined || (v >= min && v <= max))
+  }, [format?.minISO, format?.maxISO])
+
+  // Shutter speed presets (in seconds)
+  const shutterPresets: Array<{ label: string; value: number | undefined }> = useMemo(
+    () => [
+      { label: 'Auto', value: undefined },
+      { label: '1/30', value: 1 / 30 },
+      { label: '1/60', value: 1 / 60 },
+      { label: '1/120', value: 1 / 120 },
+      { label: '1/250', value: 1 / 250 },
+      { label: '1/500', value: 1 / 500 },
+      { label: '1/1000', value: 1 / 1000 },
+    ],
+    [],
+  )
+
+  const onCycleIso = useCallback(() => {
+    setManualIso((prev) => {
+      const currentIdx = isoPresets.indexOf(prev)
+      const nextIdx = (currentIdx + 1) % isoPresets.length
+      const next = isoPresets[nextIdx]
+      console.log(`ISO: ${prev ?? 'Auto'} → ${next ?? 'Auto'}`)
+      return next
+    })
+  }, [isoPresets])
+
+  const onCycleShutter = useCallback(() => {
+    setManualShutter((prev) => {
+      const currentIdx = shutterPresets.findIndex((p) => p.value === prev)
+      const nextIdx = (currentIdx + 1) % shutterPresets.length
+      const next = shutterPresets[nextIdx]
+      console.log(`Shutter: ${prev ?? 'Auto'} → ${next.label}`)
+      return next.value
+    })
+  }, [shutterPresets])
+
   return (
     <View style={styles.container}>
       {device != null ? (
@@ -221,7 +266,9 @@ export function CameraPage({ navigation }: Props): React.ReactElement {
                 lowLightBoost={device.supportsLowLightBoost && enableNightMode}
                 enableZoomGesture={false}
                 animatedProps={cameraAnimatedProps}
-                exposure={0}
+                exposure={manualIso != null || manualShutter != null ? 0 : 0}
+                iso={manualIso}
+                shutterSpeed={manualShutter}
                 enableFpsGraph={true}
                 outputOrientation="device"
                 photo={true}
@@ -277,6 +324,14 @@ export function CameraPage({ navigation }: Props): React.ReactElement {
             <IonIcon name={enableNightMode ? 'moon' : 'moon-outline'} color="white" size={24} />
           </PressableOpacity>
         )}
+        <PressableOpacity style={styles.button} onPress={onCycleIso}>
+          <Text style={styles.text}>{manualIso != null ? `ISO\n${manualIso}` : 'ISO\nAuto'}</Text>
+        </PressableOpacity>
+        <PressableOpacity style={styles.button} onPress={onCycleShutter}>
+          <Text style={styles.text}>
+            {manualShutter != null ? `${shutterPresets.find((p) => p.value === manualShutter)?.label ?? '?'}` : 'SS\nAuto'}
+          </Text>
+        </PressableOpacity>
         <PressableOpacity style={styles.button} onPress={() => navigation.navigate('Devices')}>
           <IonIcon name="settings-outline" color="white" size={24} />
         </PressableOpacity>
@@ -284,6 +339,22 @@ export function CameraPage({ navigation }: Props): React.ReactElement {
           <IonIcon name="qr-code-outline" color="white" size={24} />
         </PressableOpacity>
       </View>
+
+      {/* Manual Exposure Info Banner */}
+      {(manualIso != null || manualShutter != null) && (
+        <View style={styles.manualExposureBanner}>
+          <Text style={styles.bannerText}>
+            MANUAL: {manualIso != null ? `ISO ${manualIso}` : 'ISO Auto'}
+            {' | '}
+            {manualShutter != null ? `${shutterPresets.find((p) => p.value === manualShutter)?.label}` : 'Shutter Auto'}
+          </Text>
+          <Text style={styles.bannerSubtext}>
+            Range: ISO {format?.minISO ?? '?'}-{format?.maxISO ?? '?'} | Shutter{' '}
+            {format?.minExposureDuration != null ? `${format.minExposureDuration.toFixed(6)}s` : '?'}-
+            {format?.maxExposureDuration != null ? `${format.maxExposureDuration.toFixed(3)}s` : '?'}
+          </Text>
+        </View>
+      )}
     </View>
   )
 }
@@ -322,5 +393,26 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  manualExposureBanner: {
+    position: 'absolute',
+    bottom: SAFE_AREA_PADDING.paddingBottom + 80,
+    alignSelf: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  bannerText: {
+    color: '#FFD700',
+    fontSize: 13,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  bannerSubtext: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 10,
+    textAlign: 'center',
+    marginTop: 2,
   },
 })
