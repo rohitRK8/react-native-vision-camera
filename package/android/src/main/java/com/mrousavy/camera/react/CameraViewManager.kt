@@ -240,6 +240,24 @@ class CameraViewManager : ViewGroupManager<CameraView>() {
     view.exposure = exposure
   }
 
+  @ReactProp(name = "iso", defaultDouble = -1.0)
+  fun setIso(view: CameraView, iso: Double) {
+    if (iso != -1.0) {
+      view.iso = iso
+    } else {
+      view.iso = null
+    }
+  }
+
+  @ReactProp(name = "shutterSpeed", defaultDouble = -1.0)
+  fun setShutterSpeed(view: CameraView, shutterSpeed: Double) {
+    if (shutterSpeed != -1.0) {
+      view.shutterSpeed = shutterSpeed
+    } else {
+      view.shutterSpeed = null
+    }
+  }
+
   @ReactProp(name = "outputOrientation")
   fun setOrientation(view: CameraView, outputOrientation: String?) {
     if (outputOrientation != null) {

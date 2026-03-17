@@ -36,6 +36,10 @@ data class CameraConfiguration(
   var videoStabilizationMode: VideoStabilizationMode = VideoStabilizationMode.OFF,
   var exposure: Double? = null,
 
+  // Manual Exposure
+  var iso: Double? = null,
+  var shutterSpeed: Double? = null,
+
   // Zoom
   var zoom: Float = 1f,
 
@@ -140,7 +144,9 @@ data class CameraConfiguration(
       val sidePropsChanged = deviceChanged ||
         left?.torch != right.torch ||
         left.zoom != right.zoom ||
-        left.exposure != right.exposure
+        left.exposure != right.exposure ||
+        left.iso != right.iso ||
+        left.shutterSpeed != right.shutterSpeed
 
       val isActiveChanged = left?.isActive != right.isActive
 

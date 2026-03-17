@@ -79,6 +79,16 @@ export interface CameraDeviceFormat {
    */
   minISO: number
   /**
+   * Minimum supported exposure duration (shutter speed) in seconds.
+   * Use this as the lower bound for the {@linkcode CameraProps.shutterSpeed shutterSpeed} prop.
+   */
+  minExposureDuration: number
+  /**
+   * Maximum supported exposure duration (shutter speed) in seconds.
+   * Use this as the upper bound for the {@linkcode CameraProps.shutterSpeed shutterSpeed} prop.
+   */
+  maxExposureDuration: number
+  /**
    * The video field of view in degrees
    */
   fieldOfView: number

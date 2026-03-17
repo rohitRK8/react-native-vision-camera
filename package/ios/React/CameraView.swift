@@ -61,6 +61,8 @@ public final class CameraView: UIView, CameraSessionDelegate, PreviewViewDelegat
   @objc var torch = "off"
   @objc var zoom: NSNumber = 1.0 // in "factor"
   @objc var exposure: NSNumber = 0.0
+  @objc var iso: NSNumber?
+  @objc var shutterSpeed: NSNumber?
   @objc var videoStabilizationMode: NSString?
   @objc var resizeMode: NSString = "cover" {
     didSet {
@@ -270,6 +272,10 @@ public final class CameraView: UIView, CameraSessionDelegate, PreviewViewDelegat
 
       // Exposure
       config.exposure = exposure.floatValue
+
+      // Manual Exposure (ISO + Shutter Speed)
+      config.iso = iso?.floatValue
+      config.shutterSpeed = shutterSpeed?.floatValue
 
       // isActive
       config.isActive = isActive

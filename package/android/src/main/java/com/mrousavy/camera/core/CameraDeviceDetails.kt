@@ -73,6 +73,7 @@ class CameraDeviceDetails(private val cameraInfo: CameraInfo, extensionsManager:
   )
   private val minFocusDistance = getMinFocusDistanceCm()
   private val isoRange = getIsoRange()
+  private val exposureDurationRange = getExposureDurationRange()
   private val maxFieldOfView = getMaxFieldOfView()
 
   // Extensions
@@ -167,6 +168,9 @@ class CameraDeviceDetails(private val cameraInfo: CameraInfo, extensionsManager:
     map.putInt("maxFps", fpsRange.upper)
     map.putInt("minISO", isoRange.lower)
     map.putInt("maxISO", isoRange.upper)
+    // Exposure duration range in seconds (Camera2 stores nanoseconds)
+    map.putDouble("minExposureDuration", exposureDurationRange.lower / 1_000_000_000.0)
+    map.putDouble("maxExposureDuration", exposureDurationRange.upper / 1_000_000_000.0)
     map.putDouble("fieldOfView", maxFieldOfView)
     map.putBoolean("supportsVideoHdr", supports10BitHdr)
     map.putBoolean("supportsPhotoHdr", supportsHdrExtension)
@@ -210,6 +214,17 @@ class CameraDeviceDetails(private val cameraInfo: CameraInfo, extensionsManager:
 
     val range = device.cameraCharacteristicsCompat.get(CameraCharacteristics.SENSOR_INFO_SENSITIVITY_RANGE)
     return range ?: Range(0, 0)
+  }
+
+  private fun getExposureDurationRange(): Range<Long> {
+    val device = cameraInfo as? Camera2CameraInfoImpl
+    if (device == null) {
+      // Device is not a Camera2 device.
+      return Range(0L, 0L)
+    }
+
+    val range = device.cameraCharacteristicsCompat.get(CameraCharacteristics.SENSOR_INFO_EXPOSURE_TIME_RANGE)
+    return range ?: Range(0L, 0L)
   }
 
   private fun createStabilizationModes(): ReadableArray {

@@ -149,6 +149,44 @@ export interface CameraProps extends ViewProps {
    * The value between min- and max supported exposure is considered the default, neutral value.
    */
   exposure?: number
+  /**
+   * Specifies a manual ISO value to override auto-exposure. When set, the camera enters manual exposure mode.
+   *
+   * This value ranges from {@linkcode CameraDeviceFormat.minISO format.minISO} to {@linkcode CameraDeviceFormat.maxISO format.maxISO}.
+   *
+   * If only {@linkcode iso} is set (without {@linkcode shutterSpeed}), the current auto shutter speed is frozen.
+   * If both are `undefined`, the camera uses continuous auto-exposure.
+   *
+   * Note: Manual exposure ({@linkcode iso}/{@linkcode shutterSpeed}) and {@linkcode exposure} bias are mutually exclusive.
+   * When manual exposure is active, the exposure bias is ignored.
+   *
+   * @example
+   * ```tsx
+   * <Camera iso={100} />
+   * ```
+   */
+  iso?: number
+  /**
+   * Specifies a manual shutter speed (exposure duration) in seconds to override auto-exposure.
+   * When set, the camera enters manual exposure mode.
+   *
+   * This value ranges from {@linkcode CameraDeviceFormat.minExposureDuration format.minExposureDuration}
+   * to {@linkcode CameraDeviceFormat.maxExposureDuration format.maxExposureDuration}.
+   *
+   * If only {@linkcode shutterSpeed} is set (without {@linkcode iso}), the current auto ISO is frozen.
+   * If both are `undefined`, the camera uses continuous auto-exposure.
+   *
+   * Common values: `1/30` (0.033), `1/60` (0.0167), `1/120` (0.0083), `1/250` (0.004), `1/500` (0.002), `1/1000` (0.001)
+   *
+   * Note: Manual exposure ({@linkcode iso}/{@linkcode shutterSpeed}) and {@linkcode exposure} bias are mutually exclusive.
+   * When manual exposure is active, the exposure bias is ignored.
+   *
+   * @example
+   * ```tsx
+   * <Camera shutterSpeed={1/120} />
+   * ```
+   */
+  shutterSpeed?: number
   //#endregion
 
   //#region Format/Preset selection

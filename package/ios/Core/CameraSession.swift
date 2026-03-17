@@ -184,9 +184,14 @@ final class CameraSession: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
           if difference.zoomChanged {
             self.configureZoom(configuration: config, device: device)
           }
-          // 9. Configure exposure bias
-          if difference.exposureChanged {
+          // 9. Configure exposure bias (skip when manual exposure is active — modes are mutually exclusive)
+          let manualExposureActive = config.iso != nil || config.shutterSpeed != nil
+          if difference.exposureChanged && !manualExposureActive {
             self.configureExposure(configuration: config, device: device)
+          }
+          // 10. Configure manual exposure (ISO + shutter speed)
+          if difference.manualExposureChanged {
+            self.configureManualExposure(configuration: config, device: device)
           }
         }
 
@@ -196,10 +201,10 @@ final class CameraSession: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
           self.captureSession.commitConfiguration()
         }
 
-        // 10. Start or stop the session if needed
+        // 11. Start or stop the session if needed
         self.checkIsActive(configuration: config)
 
-        // 11. Enable or disable the Torch if needed (requires session to be running)
+        // 12. Enable or disable the Torch if needed (requires session to be running)
         if difference.torchChanged {
           try device.lockForConfiguration()
           defer {

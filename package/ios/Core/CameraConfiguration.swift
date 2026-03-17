@@ -47,6 +47,10 @@ final class CameraConfiguration {
   // Exposure
   var exposure: Float?
 
+  // Manual Exposure
+  var iso: Float?
+  var shutterSpeed: Float?
+
   // isActive (Start/Stop)
   var isActive = false
 
@@ -71,6 +75,8 @@ final class CameraConfiguration {
       torch = other.torch
       zoom = other.zoom
       exposure = other.exposure
+      iso = other.iso
+      shutterSpeed = other.shutterSpeed
       isActive = other.isActive
       audio = other.audio
     } else {
@@ -98,6 +104,7 @@ final class CameraConfiguration {
     let torchChanged: Bool
     let zoomChanged: Bool
     let exposureChanged: Bool
+    let manualExposureChanged: Bool
 
     let audioSessionChanged: Bool
     let locationChanged: Bool
@@ -115,7 +122,7 @@ final class CameraConfiguration {
      [`formatChanged`, `sidePropsChanged`, `zoomChanged`, `exposureChanged`]
      */
     var isDeviceConfigurationDirty: Bool {
-      return isSessionConfigurationDirty || formatChanged || sidePropsChanged || zoomChanged || exposureChanged
+      return isSessionConfigurationDirty || formatChanged || sidePropsChanged || zoomChanged || exposureChanged || manualExposureChanged
     }
 
     init(between left: CameraConfiguration?, and right: CameraConfiguration) {
@@ -139,6 +146,8 @@ final class CameraConfiguration {
       zoomChanged = formatChanged || left?.zoom != right.zoom
       // exposure (depends on device)
       exposureChanged = inputChanged || left?.exposure != right.exposure
+      // manual exposure (iso + shutter speed)
+      manualExposureChanged = inputChanged || left?.iso != right.iso || left?.shutterSpeed != right.shutterSpeed
 
       // audio session
       audioSessionChanged = left?.audio != right.audio

@@ -336,6 +336,67 @@ extension CameraSession {
     device.setExposureTargetBias(clamped)
   }
 
+  // pragma MARK: Manual Exposure (ISO + Shutter Speed)
+
+  /**
+   Configures manual exposure mode with explicit ISO and/or shutter speed (exposure duration).
+   When both iso and shutterSpeed are nil, the device stays in (or reverts to) continuous auto-exposure.
+   AVFoundation requires both duration AND iso for custom mode, so we fill in the current device value
+   for whichever parameter the caller did not specify.
+   */
+  func configureManualExposure(configuration: CameraConfiguration, device: AVCaptureDevice) {
+    let wantISO = configuration.iso
+    let wantShutter = configuration.shutterSpeed
+
+    // --- TRANSITION: Custom → Auto ---
+    if wantISO == nil && wantShutter == nil {
+      if device.exposureMode != .continuousAutoExposure && device.isExposureModeSupported(.continuousAutoExposure) {
+        device.exposureMode = .continuousAutoExposure
+      }
+      // Re-apply exposure bias that may have been set before entering manual mode
+      if let exposure = configuration.exposure {
+        let clamped = min(max(exposure, device.minExposureTargetBias), device.maxExposureTargetBias)
+        device.setExposureTargetBias(clamped)
+      }
+      return
+    }
+
+    // --- TRANSITION: Auto → Custom or Custom → Custom (value change) ---
+    guard device.isExposureModeSupported(.custom) else {
+      return
+    }
+
+    // Resolve ISO — clamp to device format range
+    let targetISO: Float
+    if let iso = wantISO {
+      targetISO = min(max(iso, device.activeFormat.minISO), device.activeFormat.maxISO)
+    } else {
+      targetISO = device.iso // freeze current auto value
+    }
+
+    // Resolve shutter speed (exposure duration) — clamp to device format range
+    let targetDuration: CMTime
+    if let shutter = wantShutter {
+      let minDur = device.activeFormat.minExposureDuration
+      let maxDur = device.activeFormat.maxExposureDuration
+      let requested = CMTimeMakeWithSeconds(Float64(shutter), preferredTimescale: 1_000_000)
+      if requested < minDur {
+        targetDuration = minDur
+      } else if requested > maxDur {
+        targetDuration = maxDur
+      } else {
+        targetDuration = requested
+      }
+    } else {
+      targetDuration = device.exposureDuration // freeze current auto value
+    }
+
+    device.exposureMode = .custom
+    device.setExposureModeCustom(duration: targetDuration, iso: targetISO, completionHandler: nil)
+    // Reset bias to neutral in custom mode (bias has no meaning here)
+    device.setExposureTargetBias(0)
+  }
+
   // pragma MARK: Audio
 
   /**

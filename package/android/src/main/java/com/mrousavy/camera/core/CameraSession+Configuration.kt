@@ -24,6 +24,12 @@ import com.mrousavy.camera.core.types.Torch
 import com.mrousavy.camera.core.types.VideoStabilizationMode
 import com.mrousavy.camera.core.utils.CamcorderProfileUtils
 import kotlin.math.roundToInt
+import android.hardware.camera2.CameraCharacteristics
+import android.hardware.camera2.CaptureRequest
+import androidx.camera.camera2.interop.Camera2CameraControl
+import androidx.camera.camera2.interop.Camera2CameraInfo
+import androidx.camera.camera2.interop.CaptureRequestOptions
+import androidx.camera.camera2.interop.ExperimentalCamera2Interop
 
 private fun assertFormatRequirement(
   propName: String,
@@ -330,12 +336,61 @@ internal fun CameraSession.configureSideProps(config: CameraConfiguration) {
     camera.cameraControl.enableTorch(newTorch)
   }
 
-  // Exposure
-  val currentExposureCompensation = camera.cameraInfo.exposureState.exposureCompensationIndex
-  val exposureCompensation = config.exposure?.roundToInt() ?: 0
-  if (currentExposureCompensation != exposureCompensation) {
-    camera.cameraControl.setExposureCompensationIndex(exposureCompensation)
+  // Exposure (skip when manual exposure is active — modes are mutually exclusive)
+  val manualExposureActive = config.iso != null || config.shutterSpeed != null
+  if (!manualExposureActive) {
+    val currentExposureCompensation = camera.cameraInfo.exposureState.exposureCompensationIndex
+    val exposureCompensation = config.exposure?.roundToInt() ?: 0
+    if (currentExposureCompensation != exposureCompensation) {
+      camera.cameraControl.setExposureCompensationIndex(exposureCompensation)
+    }
   }
+
+  // Manual Exposure (ISO + Shutter Speed)
+  configureManualExposure(config)
+}
+
+@OptIn(ExperimentalCamera2Interop::class)
+internal fun CameraSession.configureManualExposure(config: CameraConfiguration) {
+  val camera = camera ?: return
+
+  val wantISO = config.iso?.toInt()
+  val wantShutter = config.shutterSpeed
+
+  val camera2Control = Camera2CameraControl.from(camera.cameraControl)
+  val camera2Info = Camera2CameraInfo.from(camera.cameraInfo)
+
+  // Both nil → auto exposure
+  if (wantISO == null && wantShutter == null) {
+    // Restore auto-exposure mode
+    val options = CaptureRequestOptions.Builder()
+      .setCaptureRequestOption(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON)
+      .clearCaptureRequestOption(CaptureRequest.SENSOR_SENSITIVITY)
+      .clearCaptureRequestOption(CaptureRequest.SENSOR_EXPOSURE_TIME)
+      .build()
+    camera2Control.setCaptureRequestOptions(options)
+    return
+  }
+
+  // Manual mode: disable auto-exposure, set ISO + shutter speed
+  val builder = CaptureRequestOptions.Builder()
+  builder.setCaptureRequestOption(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_OFF)
+
+  if (wantISO != null) {
+    val isoRange = camera2Info.getCameraCharacteristic(CameraCharacteristics.SENSOR_INFO_SENSITIVITY_RANGE)
+    val clamped = wantISO.coerceIn(isoRange?.lower ?: 100, isoRange?.upper ?: 3200)
+    builder.setCaptureRequestOption(CaptureRequest.SENSOR_SENSITIVITY, clamped)
+  }
+
+  if (wantShutter != null) {
+    // Convert seconds → nanoseconds for Camera2
+    val nanos = (wantShutter * 1_000_000_000).toLong()
+    val durationRange = camera2Info.getCameraCharacteristic(CameraCharacteristics.SENSOR_INFO_EXPOSURE_TIME_RANGE)
+    val clamped = nanos.coerceIn(durationRange?.lower ?: 1000L, durationRange?.upper ?: 1_000_000_000L)
+    builder.setCaptureRequestOption(CaptureRequest.SENSOR_EXPOSURE_TIME, clamped)
+  }
+
+  camera2Control.setCaptureRequestOptions(builder.build())
 }
 
 internal fun CameraSession.configureIsActive(config: CameraConfiguration) {
